@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+import requests
 import time
 
 # إعداد الصفحة لتكون مريحة للعين ومتجاوبة
@@ -20,13 +21,11 @@ if st.session_state.app_page == 'reception_screen':
     st.write("---")
     
     with st.form("reception_form"):
-        # (1 إلى 2): بيانات الموعد
         st.subheader("1. بيانات الموعد")
         col1, col2 = st.columns(2)
         appointment_date = col1.date_input("تاريخ الموعد", date.today())
         appointment_time = col2.time_input("وقت الموعد")
         
-        # (3 إلى 9): البيانات الشخصية
         st.subheader("2. البيانات الشخصية للمريض")
         c1, c2, c3 = st.columns(3)
         first_name = c1.text_input("الاسم الأول")
@@ -38,13 +37,11 @@ if st.session_state.app_page == 'reception_screen':
         dob = c5.date_input("تاريخ الميلاد", date(1980, 1, 1))
         id_number = st.text_input("الرقم القومي / الهوية (14 رقم)")
         
-        # (10 إلى 11): الديموغرافيا الأساسية
         st.subheader("3. الديموغرافيا الأساسية")
         c6, c7 = st.columns(2)
         age = c6.number_input("السن (يُحسب تلقائياً أو يدوي)", min_value=0, max_value=120, value=30)
         gender = c7.selectbox("الجنس", ["ذكر", "أنثى"])
         
-        # (13 إلى 22): معلومات الاتصال والحالة الاجتماعية
         st.subheader("4. معلومات الاتصال والحالة الاجتماعية")
         c8, c9 = st.columns(2)
         phone_1 = c8.text_input("رقم الهاتف الأساسي")
@@ -62,11 +59,9 @@ if st.session_state.app_page == 'reception_screen':
         youngest_child_age = c13.number_input("سن أصغر طفل", min_value=0, max_value=100, value=0)
         relation_to_spouse = c14.selectbox("صلة القرابة مع الشريك", ["لا توجد صلة", "أقارب درجة أولى", "أقارب درجة ثانية"])
         
-        # (25): بيانات الشريك
         st.subheader("5. بيانات الشريك")
         spouse_chronic_diseases = st.text_area("الأمراض المزمنة للشريك (إن وجدت)")
         
-        # (26 إلى 34): الوظيفة وجهة الإحالة
         st.subheader("6. الوظيفة وجهة الإحالة")
         c15, c16 = st.columns(2)
         job_title = c15.text_input("الوظيفة الحالية للمريض")
@@ -204,106 +199,57 @@ elif st.session_state.app_page == 'doctor_screen':
             morning_stiffness = st.selectbox("مدة التيبس الصباحي في المفاصل", ["لا يوجد", "أقل من 30 دقيقة", "من 30-60 دقيقة", "أكثر من ساعة"], key="ms_new")
             movement_improve_old = st.toggle("هل يتحسن ألم وتيبس المفاصل مع الحركة؟", key="mi_old")
             joint_swelling_old = st.toggle("وجود تورم واضح وملاحظ بالعين في المفاصل", key="js_old")
-            symmetrical_swelling_old = st.toggle("هل التورم متماثل في جانبي الجسم؟", key="ss_old")
+            symmetrical_swelling_old = st.toggle("هل التورم متماثل في جانبي الجسم？", key="ss_old")
 
         st.markdown("**🔥 مقياس الألم الوظيفي الموحد:**")
         pain_score = st.slider("مقياس تقييم المريض العام لشدة الألم الحالية (PtGA)", 0, 10, 5, key="ps_final")
 
-        submit_doctor = st.form_submit_button("🧠 تشغيل محرك الدعم السريري الطبي والتحليل الفوري (AI CDSS)")
+        submit_doctor = st.form_submit_button("🧠 استدعاء الذكاء الاصطناعي الحقيقي - تحليل وتوجيه سريري كامل (AI CDSS)")
 
     # =================================================================
-    # 🧠 الـ CDSS الداخلي العميق والمستقل (Clinical Logic Engine)
+    # 🤖 محرك اتصال الذكاء الاصطناعي الفعلي والحر (Hugging Face API Portal)
     # =================================================================
     if submit_doctor:
-        with st.spinner('⏳ يقوم المحرك بمطابقة الأعراض إكلينيكياً مع معايير ACR/EULAR العالمية...'):
-            time.sleep(1.5)
+        with st.spinner('⏳ يتصل اللاب توب بالسيرفر الطبي المركزي.. جاري صياغة التوجيه السريري الشامل...'):
             
-            # حساب النقاط والمؤشرات الطبية الحقيقية خلف الكواليس
-            sle_points = 0
-            ra_points = 0
-            as_points = 0
-            reasoning = []
-            workup = []
+            # صياغة الـ Prompt الطبي المفتوح بدون أي حجر على التفكير
+            prompt_input = f"""
+            You are a Senior Rheumatology Clinical Decision Support System (CDSS). 
+            Analyze this case and provide an expert report strictly in Arabic:
+            Patient Info: {p.get('الجنس')}, Age: {p.get('السن')} years.
+            Chief Complaint: {chief_complaint}
+            Morning Stiffness: {morning_stiffness}
+            Symmetrical Swelling: {'Yes' if symmetrical_swelling_old else 'No'}
+            Malar Rash: {'Yes' if malar_rash_old else 'No'}
+            Foamy Urine: {'Yes' if foam_urine else 'No'}
+            Family History: Lupus={'Yes' if f_lupus_pt or f_lupus_mo else 'No'}, RA={'Yes' if f_ra_pt or f_ra_mo else 'No'}
             
-            # تحليل معطيات الذئبة الحمراء (SLE)
-            if p.get('الجنس') == "أنثى": sle_points += 2
-            if malar_rash_old: 
-                sle_points += 6
-                reasoning.append("وجود طفح الفراشة الجلدي (Malar Rash) وهو علامة مميزة وعالية التوجيه.")
-            if oral_ulcers_old:
-                sle_points += 2
-                reasoning.append("تكرار قرح الفم السريرية (Oral Ulcers).")
-            if foam_urine:
-                sle_points += 4
-                reasoning.append("رغوة البول تشير لوجود زلال، مما يوجه بقوة لاحتمالية إصابة كلوية مناعية (Lupus Nephritis).")
-                workup.append("• تحليل بول كامل ونسبة بروتين/كرياتينين (24-Hour Urine Protein).")
-            if abortions_count > 0:
-                sle_points += 3
-                reasoning.append(f"التاريخ النسائي يسجل ({abortions_count}) مرات إجهاض تلقائي، مؤشر لمتلازمة الأجسام المضادة للفوسفوليبيد (APS).")
-                workup.append("• فحص متلازمة الفوسفوليبيد (Antiphospholipid Antibodies: Lupus Anticoagulant, Anti-cardiolipin).")
-            if f_lupus_mo or f_lupus_fa or f_lupus_sib:
-                sle_points += 2
-                reasoning.append("وجود استعداد جيني عبر التاريخ العائلي من الدرجة الأولى للذئبة.")
-
-            # تحليل معطيات الروماتويد (RA)
-            if joint_swelling_old: ra_points += 3
-            if symmetrical_swelling_old:
-                ra_points += 4
-                reasoning.append("التورم المفصلي المتماثل (Symmetrical Polyarthritis) يطابق معياراً رئيسياً لمرض الروماتويد.")
-            if morning_stiffness == "أكثر من ساعة":
-                ra_points += 4
-                reasoning.append("التيبس الصباحي الممتد لأكثر من ساعة يعكس نشاطاً التهابياً حاداً في الغشاء الزلالي.")
-            if f_ra_mo or f_ra_fa:
-                ra_points += 2
-
-            # تحليل معطيات التيبس الفقاري (AS)
-            if movement_improve_old:
-                as_points += 6
-                reasoning.append("تحسن آلام الظهر والمفاصل مع الحركة وبذل المجهود يعزز بقوة طبيعة الألم الالتهابية (Inflammatory Back Pain).")
-            if f_as_fam:
-                as_points += 3
-
-            # إعداد التقارير والنسب بناء على مجموع النقاط الطبية
-            sle_final = min(int((sle_points / 15) * 100), 96) if sle_points > 2 else 5
-            ra_final = min(int((ra_points / 11) * 100), 94) if ra_points > 2 else 5
-            as_final = min(int((as_points / 9) * 100), 92) if as_points > 2 else 5
+            Provide:
+            1. Differential Diagnosis (التشخيصات المحتملة بنسب مئوية دقيقة)
+            2. Clinical Guidance (التوجيه السريري والربط بين الأعراض)
+            3. Recommended Action Plan (التحاليل، الأشعة، والخطة العلاجية المبدئية المقترحة)
+            """
             
-            # فرز خطة العمل التلقائية والأساسية لقوة التشخيص
-            if sle_final > 50: workup.append("• فحص الأجسام المضادة للنواة وعيارها عالي الدقة (ANA Titer & Anti-dsDNA).")
-            if ra_final > 50: workup.append("• فحص معامل الروماتويد والأجسام المضادة للسيترولين (RF & Anti-CCP).")
-            if as_final > 50: workup.append("• أشعة رنين مغناطيسي على المفصل الحرقفي وفحص الجين (MRI Sacroiliac Joints & HLA-B27).")
-            if not workup: workup.append("• لا توجد مؤشرات حادة حالياً، يوصى بالفحوصات الدورية العامة (CBC, ESR, CRP).")
-
-            st.success("✅ اكتمل التقييم السريري الذكي بنجاح.")
-            st.write("---")
-            st.header("🎯 تقرير محرك دعم اتخاذ القرار الإكلينيكي (AI CDSS Output)")
+            # الاتصال بخادم طبي مفتوح ومستقر تماماً وبدون مفاتيح سرية
+            API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+            headers = {"Content-Type": "application/json"}
+            payload = {"inputs": prompt_input, "parameters": {"max_new_tokens": 800, "temperature": 0.3}}
             
-            res_col1, res_col2 = st.columns(2)
-            
-            with res_col1:
-                st.subheader("📊 الاحتمالات التشخيصية المقترحة (Differential Diagnosis)")
+            try:
+                response = requests.post(API_URL, headers=headers, json=payload)
+                res_json = response.json()
                 
-                st.write(f"**الذئبة الحمراء الجهازية (Systemic Lupus Erythematosus - SLE):** {sle_final}%")
-                st.progress(sle_final / 100)
+                # تنظيف النص وعرضه
+                raw_text = res_json[0]['generated_text']
+                output_text = raw_text.split(prompt_input)[-1].strip()
                 
-                st.write(f"**التهاب المفاصل الروماتويدي (Rheumatoid Arthritis - RA):** {ra_final}%")
-                st.progress(ra_final / 100)
-                
-                st.write(f"**التهاب الفقار اللاصق / الروماتيزم التيبسي (Ankylosing Spondylitis - AS):** {as_final}%")
-                st.progress(as_final / 100)
-
-            with res_col2:
-                st.subheader("🧬 التحليل الإكلينيكي للحالة (Clinical Reasoning)")
-                if reasoning:
-                    for r in reasoning:
-                        st.write(f"🔹 {r}")
-                else:
-                    st.write("الأعراض المدخلة عامة، لا تظهر تلازميات لمرض مناعي محدد حتى الآن.")
-                
+                st.success("✅ تم استلام تقرير التوجيه الطبي الحي!")
                 st.write("---")
-                st.subheader("🧪 خطة الفحص والتحاليل المستهدفة (Suggested Workup)")
-                for w in set(workup):
-                    st.info(w)
+                st.header("🎯 تقرير الذكاء الاصطناعي الحقيقي لدعم القرار (AI CDSS Result)")
+                st.markdown(output_text)
+                
+            except:
+                st.error("⚠️ السيرفر المركزي مشغول حالياً، يرجى المحاولة مرة أخرى خلال ثوانٍ.")
 
     st.write("---")
     if st.button("🔄 استقبال مريض جديد"):
