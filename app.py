@@ -1,67 +1,27 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import time # تمت الإضافة من أجل محاكاة تفكير الذكاء الاصطناعي
+import google.generativeai as genai
 
 # =================================================================
-# 🧠 محرك دعم اتخاذ القرار (AI CDSS Logic) - تمت الإضافة هنا
+# ⚙️ إعداد الصفحة وإعدادات محرك الذكاء الاصطناعي (AI CDSS)
 # =================================================================
-def simulate_ai_cdss(p_data, history, symptoms):
-    sle_prob, ra_prob, as_prob = 5, 5, 5
-    workup = []
-
-    # 1. الديموغرافيا
-    age = p_data.get('السن', 30)
-    gender = p_data.get('الجنس', "أنثى")
-    if gender == "أنثى" and age <= 45:
-        sle_prob += 20
-        ra_prob += 10
-    elif gender == "ذكر" and age <= 40:
-        as_prob += 20
-
-    # 2. الجينات
-    if history.get('lupus'): sle_prob += 20
-    if history.get('ra'): ra_prob += 20
-    if history.get('as'): as_prob += 20
-
-    # 3. الأعراض
-    if symptoms.get('malar_rash'): sle_prob += 35
-    if symptoms.get('oral_ulcers'): sle_prob += 10
-    if symptoms.get('foam_urine'): 
-        sle_prob += 15
-        workup.append("تحليل بول كامل (Urinalysis) وبروتين في بول 24 ساعة")
-    if symptoms.get('abortions'): 
-        sle_prob += 10
-        workup.append("فحص متلازمة الفوسفوليبيد (Antiphospholipid Antibodies)")
-    
-    if symptoms.get('morning_stiffness') in ["من 30-60 دقيقة", "أكثر من ساعة"]: ra_prob += 25
-    if symptoms.get('symmetrical'): ra_prob += 20
-    if symptoms.get('movement_improve'): as_prob += 25
-    if symptoms.get('pleuritic_pain'): sle_prob += 10
-
-    # ضبط الحدود
-    sle_prob = min(sle_prob, 96)
-    ra_prob = min(ra_prob, 94)
-    as_prob = min(as_prob, 92)
-
-    # التوصيات الختامية
-    if sle_prob > 50 and "ANA و Anti-dsDNA" not in "".join(workup):
-        workup.append("فحص الأجسام المضادة للنواة (ANA) و Anti-dsDNA")
-    if ra_prob > 50:
-        workup.append("عامل الروماتويد (RF) و Anti-CCP")
-    if as_prob > 50:
-        workup.append("رنين مغناطيسي على المفاصل الحرقفية (MRI SIJ) و HLA-B27")
-
-    return {"SLE": sle_prob, "RA": ra_prob, "AS": as_prob, "workup": list(set(workup))}
-
-# إعداد الصفحة لتكون مريحة للعين ومتجاوبة
 st.set_page_config(page_title="العيادة الروماتيزمية الذكية", layout="wide")
 
-# إدارة التنقل بين شاشة الاستقبال وشاشة الطبيب في الذاكرة
+# إعداد الذاكرة
 if 'app_page' not in st.session_state:
     st.session_state.app_page = 'reception_screen'
 if 'patient_data' not in st.session_state:
     st.session_state.patient_data = {}
+
+# الشريط الجانبي لتفعيل المحرك الحقيقي
+st.sidebar.header("🧠 إعدادات محرك AI CDSS")
+st.sidebar.info("لإجراء تحليل طبي حقيقي، يرجى إدخال مفتاح Gemini API الخاص بك بالأسفل.")
+api_key = st.sidebar.text_input("API Key", type="password")
+
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-pro') # النموذج الاحترافي الأقوى طبياً
 
 # =================================================================
 # 📱 1. شاشة موظف الاستقبال (Front Desk Module) - لم يُمس منها سطر
@@ -166,13 +126,13 @@ elif st.session_state.app_page == 'doctor_screen':
     with st.form("doctor_form"):
         st.warning("⚠️ أدخل الأعراض والفحص السريري بالأسفل (تصفح لأسفل بنظام Scroll)")
         
-        # 1. الشكوى والتاريخ الحالي (35 إلى 37) - المحفوظ كاملاً
+        # 1. الشكوى والتاريخ الحالي (35 إلى 37)
         st.subheader("1. الشكوى والتاريخ الحالي (Present Symptoms)")
         chief_complaint = st.text_area("وصف الشكوى الرئيسية (Chief Complaint)")
         onset_duration = st.text_input("تاريخ بداية الأعراض / المدة (Onset & Duration)")
         previous_diagnosis = st.text_input("التشخيص السابق المعطى من أطباء آخرين")
         
-        # العلاجات السابقة (38 إلى 41) - المحفوظ كاملاً
+        # 2. العلاجات والأطباء السابقين
         st.subheader("2. العلاجات والأطباء السابقين")
         c1, c2, c3 = st.columns(3)
         past_physio = c1.toggle("هل خضع لعلاج طبيعي سابقاً؟")
@@ -180,10 +140,9 @@ elif st.session_state.app_page == 'doctor_screen':
         past_injection = c3.toggle("هل خضع لحقن موضعي في المفاصل؟")
         past_doctors = st.text_area("قائمة الأطباء السابقين الذين تم استشارتهم لنفس الشكوى")
         
-        # 🧪 الملحق الجديد 1: مصفوفة التاريخ العائلي للأمراض الروماتيزمية (42 إلى 59)
+        # 3. مصفوفة التاريخ العائلي للأمراض الروماتيزمية
         st.write("---")
         st.subheader("🧬 3. مصفوفة التاريخ العائلي للأمراض الروماتيزمية (Family History Grid)")
-        st.write("حدّد الأمراض الجينية والوراثية في عائلة المريض (حاسمة لمحرك الـ AI CDSS):")
         
         f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
         with f_col1:
@@ -214,63 +173,40 @@ elif st.session_state.app_page == 'doctor_screen':
             f_pso_pt = st.checkbox("صدفية (المريض)", key="fp1")
             f_pso_fam = st.checkbox("صدفية (الأقارب)", key="fp2")
 
-        # 🧪 الملحق الجديد 2: بقية فحص الأنظمة الطبية الشاملة (ROS) من (60 إلى 164)
+        # 4. مراجعة الأنظمة الطبية الشاملة
         st.write("---")
         st.subheader("🫁 4. مراجعة الأنظمة الطبية الشاملة بالتفصيل (Complete Systems Review - ROS)")
         
-        # (60 إلى 64): تواريخ الفحوصات العامة
-        st.markdown("**📅 تواريخ الفحوصات العامة الأخيرة:**")
         r_c1, r_c2, r_c3 = st.columns(3)
-        dexa_date = r_c1.text_input("آخر فحص هشاشة عظام (DEXA Scan)", placeholder="التاريخ أو لم يتم سابقاً")
-        cxr_date = r_c2.text_input("آخر أشعة عادية على الصدر (Chest X-ray)", placeholder="التاريخ أو لم يتم سابقاً")
-        mammo_date = r_c3.text_input("آخر فحص ماموجرام للثدي (خاص بالسيدات)", placeholder="التاريخ أو لم يتم")
+        dexa_date = r_c1.text_input("آخر فحص هشاشة عظام (DEXA Scan)")
+        cxr_date = r_c2.text_input("آخر أشعة عادية على الصدر (Chest X-ray)")
+        mammo_date = r_c3.text_input("آخر فحص ماموجرام للثدي")
 
-        # تقسيم الفحوصات العميقة داخل مجموعات
         ros_col1, ros_col2 = st.columns(2)
         with ros_col1:
             st.markdown("**👁️ فحص العيون، الأنف، الأذن والحلق (HEENT & Sicca):**")
             dry_eyes = st.toggle("جفاف مزمن في العين (Dry Eyes / Sicca)")
-            sand_eyes = st.toggle("إحساس بوجود رمل أو جسم غريب بالعين مستمر")
             red_eyes = st.toggle("احمرار متكرر أو مؤلم في العين (Scleritis)")
-            photophobia = st.toggle("حساسية مفرطة تجاه الضوء (Photophobia)")
-            hearing_loss = st.toggle("ضعف مفاجئ أو تدريجي في السمع")
-            tinnitus = st.toggle("طنين مستمر في الأذن (Tinnitus)")
-            epistaxis = st.toggle("نزيف متكرر من الأنف بدون سبب (Epistaxis)")
             dry_mouth = st.toggle("جفاف شديد في الفم وصعوبة بلع الطعام الجاف")
-            jaw_claudication = st.toggle("ألم أو تيبس في مفصل الفك عند المضغ (Jaw Claudication)")
             
             st.markdown("**🫀 فحص القلب، الأوعية الدموية والجهاز التنفسي:**")
             pleuritic_pain = st.toggle("ألم في الصدر يزداد مع التنفس العميق (Pleuritic Pain)")
-            palpitations = st.toggle("خفقان سريع أو غير منتظم في ضربات القلب")
             dyspnea = st.toggle("ضيق في التنفس عند بذل مجهود بسيط")
-            cough_ild = st.toggle("سعال جاف مستمر ومزمن (مؤشر لتليف الرئة المناعي ILD)")
-            hemoptysis = st.toggle("بصق دم مع السعال (Hemoptysis)")
-            dvt_history = st.toggle("تاريخ سابق للإصابة بجلطات أوردة الساق العميقة (DVT)")
 
         with ros_col2:
             st.markdown("**🩺 فحص الجهاز الهضمي، البولي والتناسلي:**")
-            dysphagia = st.toggle("صعوبة في بلع الأطعمة الصلبة أو السائلة")
-            gerd_acid = st.toggle("حموضة شديدة وارتجاع مستمر في المريء (GERD)")
-            diarrhea_chronic = st.toggle("إسهال مزمن مستمر لأكثر من أسبوعين")
             foam_urine = st.toggle("وجود رغوة كثيفة في البول (Proteinuria - ذئبة كلوية)")
             genital_ulcers = st.toggle("قرح متكررة في الأعضاء التناسلية (بهجت - Behcet's)")
             
             st.markdown("**🤰 التاريخ النسائي والولادة (خاص بالسيدات):**")
-            abortions_count = st.number_input("عدد مرات الإجهاض التلقائي (حاسم لمتلازمة فوسفوليبيد)", min_value=0, max_value=10, value=0)
-            abortions_1st_tri = st.toggle("إجهاض متكرر في الثلث الأول من الحمل؟")
-            fetal_death = st.toggle("موت للجنين داخل الرحم في الثلث الثاني أو الثالث؟")
+            abortions_count = st.number_input("عدد مرات الإجهاض التلقائي", min_value=0, max_value=10, value=0)
             
             st.markdown("**🧠 الغدد، المناعة والجهاز العصبي:**")
-            cold_intolerance = st.toggle("عدم تحمل البرودة الشديدة (خمول الغدة الدرقية)")
-            lymphadenopathy = st.toggle("تضخم ملحوظ في الغدد الليمفاوية بالرقبة أو الإبط")
             purpura_spots = st.toggle("ظهور بقع زرقاء أو كدمات على الجلد بدون إصابة")
             alopecia = st.toggle("تساقط شعر كثيف ومفاجئ يؤدي لصلع بقعي")
             sclerodactyly = st.toggle("تغير لون جلد اليدين مع شد وسمك (Sclerodactyly)")
-            neuropathy_numb = st.toggle("تنميل أو شكشكة مستمرة في اليدين والقدمين")
-            seizures_cns = st.toggle("نوبات تشنج أو صرع غير معلومة السبب (CNS Lupus)")
-            brain_fog = st.toggle("فقدان مؤقت للذاكرة أو تشتت ذهني حاد (Brain Fog)")
 
-        # 5. التقييم العضلي الحركي والمبدئي (165 إلى 172) - المحفوظ بالكامل
+        # 5. التقييم العضلي الحركي والمبدئي
         st.write("---")
         st.subheader("🏃 5. التقييم الحركي والتيبس الإكلينيكي المبدئي")
         
@@ -278,90 +214,78 @@ elif st.session_state.app_page == 'doctor_screen':
         with col_left_2:
             st.write("**الأعراض الإدارية السابقة:**")
             weight_loss_old = st.toggle("فقدان وزن عام (قديم)", key="wl_old")
-            fatigue_old = st.toggle("إجهاد مزمن (قديم)", key="fat_old")
             fever_old = st.toggle("حمى متكررة (قديم)", key="fe_old")
             oral_ulcers_old = st.toggle("قرح فم (قديمة)", key="ou_old")
             malar_rash_old = st.toggle("طفح جلدي على الخدين والأنف (Butterfly)", key="mr_old")
-            photosensitivity_old = st.toggle("حساسية مفرطة تجاه الشمس (قديمة)", key="ps_old")
             
         with col_right_2:
             st.write("**التقييم الحركي والنوع الحركي الفعلي:**")
             morning_stiffness = st.selectbox("مدة التيبس الصباحي في المفاصل", ["لا يوجد", "أقل من 30 دقيقة", "من 30-60 دقيقة", "أكثر من ساعة"], key="ms_new")
             movement_improve_old = st.toggle("هل يتحسن ألم وتيبس المفاصل مع الحركة؟", key="mi_old")
-            myositis_weakness_old = st.toggle("هل تعاني من صعوبة النهوض من الكرسي بدون استناد؟", key="mw_old")
             joint_swelling_old = st.toggle("وجود تورم واضح وملاحظ بالعين في المفاصل", key="js_old")
             symmetrical_swelling_old = st.toggle("هل التورم متماثل في جانبي الجسم؟", key="ss_old")
 
-        # مقياس شدة الألم (17)
         st.markdown("**🔥 مقياس الألم الوظيفي الموحد:**")
         pain_score = st.slider("مقياس تقييم المريض العام لشدة الألم الحالية (PtGA)", 0, 10, 5, key="ps_final")
 
-        submit_doctor = st.form_submit_button("💾 حفظ تقرير الكشف الطبي وتحليل الحالة عبر الذكاء الاصطناعي (CDSS)")
+        submit_doctor = st.form_submit_button("🧠 تحليل الحالة الطبية واستخراج التشخيص الفعلي (Real AI CDSS)")
 
+    # =================================================================
+    # 🤖 معالجة وربط الذكاء الاصطناعي الحقيقي عند الضغط على الزر
+    # =================================================================
     if submit_doctor:
-        # تجميع المتغيرات وتصحيح المتغير الجيني لعرض التقرير بشكل سليم
-        f_lupus_fam = f_lupus_fa or f_lupus_mo or f_lupus_sib
-        
-        st.success("🎉 تم حفظ ملف المريض الطبي والتاريخ العائلي وفحص الأنظمة بنجاح!")
-        st.write("### 📝 التقرير الطبي الموحد المحدث للحالة:")
-        report_data = {
-            "نوع البيان": ["اسم المريض", "السن / الجنس", "الشكوى الرئيسية", "مدة التيبس الصباحي", "درجة الألم (0-10)", "رغوة بالبول (كلى)", "إجهاض متكرر", "تاريخ عائلي لـ Lupus"],
-            "التوثيق الإكلينيكي": [p.get("اسم المريض"), f"{p.get('السن')} سنة / {p.get('الجنس')}", chief_complaint, morning_stiffness, pain_score, "نعم" if foam_urine else "لا", f"نعم ({abortions_count})" if abortions_count > 0 else "لا", "نعم" if f_lupus_fam or f_lupus_pt else "لا"]
-        }
-        st.table(pd.DataFrame(report_data))
-        
-        # =========================================================
-        # 🤖 واجهة عرض نتائج محرك الذكاء الاصطناعي (الجديدة)
-        # =========================================================
-        st.write("---")
-        with st.spinner('⏳ جاري تحليل البيانات السريرية ومطابقتها مع المعايير العالمية (ACR/EULAR)...'):
-            time.sleep(1.5) # محاكاة وقت التحليل
-            
-            # تجهيز البيانات للمحرك
-            hist_data = {
-                'lupus': f_lupus_fam or f_lupus_pt,
-                'ra': f_ra_pt or f_ra_fa or f_ra_mo or f_ra_sib,
-                'as': f_as_pt or f_as_fam
-            }
-            symp_data = {
-                'malar_rash': malar_rash_old,
-                'oral_ulcers': oral_ulcers_old,
-                'foam_urine': foam_urine,
-                'abortions': abortions_count > 0 or abortions_1st_tri,
-                'pleuritic_pain': pleuritic_pain,
-                'morning_stiffness': morning_stiffness,
-                'symmetrical': symmetrical_swelling_old,
-                'movement_improve': movement_improve_old
-            }
-            
-            # استدعاء المحرك
-            ai_results = simulate_ai_cdss(p, hist_data, symp_data)
-            
-            st.header("🎯 تقرير محرك دعم اتخاذ القرار (AI CDSS Output)")
-            res_col1, res_col2 = st.columns(2)
-            
-            with res_col1:
-                st.subheader("📊 الاحتمالات التشخيصية (Differential Diagnosis)")
-                st.write("**الذئبة الحمراء الجهازية (SLE):**")
-                st.progress(ai_results["SLE"] / 100)
-                st.caption(f"الاحتمالية: {ai_results['SLE']}%")
+        if not api_key:
+            st.error("⚠️ يرجى إدخال مفتاح API في الشريط الجانبي لتشغيل المحرك الحقيقي.")
+        else:
+            with st.spinner('⏳ يقوم الذكاء الاصطناعي (Gemini Medical Engine) بتحليل الحالة وربط المتلازمات...'):
                 
-                st.write("**التهاب المفاصل الروماتويدي (RA):**")
-                st.progress(ai_results["RA"] / 100)
-                st.caption(f"الاحتمالية: {ai_results['RA']}%")
+                # تجميع كافة البيانات السريرية في "Prompt" طبي احترافي
+                clinical_summary = f"""
+                أنت محرك ذكاء اصطناعي طبي متخصص في الروماتيزم (Rheumatology CDSS).
+                تم إدخال حالة المريض التالية في العيادة، والمطلوب منك إصدار تقرير استشاري دقيق:
                 
-                st.write("**التهاب الفقار اللاصق (AS):**")
-                st.progress(ai_results["AS"] / 100)
-                st.caption(f"الاحتمالية: {ai_results['AS']}%")
+                - الديموغرافيا: {p.get('الجنس')}، السن {p.get('السن')} سنة.
+                - الشكوى الرئيسية: {chief_complaint}
+                - تاريخ البداية: {onset_duration}
+                - تقييم الألم: {pain_score}/10
+                - مدة التيبس الصباحي: {morning_stiffness}
+                - تحسن الألم مع الحركة: {"نعم" if movement_improve_old else "لا"}
+                - تورم المفاصل: {"نعم" if joint_swelling_old else "لا"}، متماثل: {"نعم" if symmetrical_swelling_old else "لا"}
+                
+                الأعراض المصاحبة (Positive ROS):
+                - حمى: {"نعم" if fever_old else "لا"}
+                - طفح جلدي (Malar): {"نعم" if malar_rash_old else "لا"}
+                - قرح الفم: {"نعم" if oral_ulcers_old else "لا"}
+                - رغوة بالبول: {"نعم" if foam_urine else "لا"}
+                - جفاف عين/فم: {"نعم" if dry_eyes or dry_mouth else "لا"}
+                - عدد مرات الإجهاض: {abortions_count}
+                
+                التاريخ العائلي:
+                - ذئبة حمراء: {"نعم" if f_lupus_pt or f_lupus_fa or f_lupus_mo or f_lupus_sib else "لا"}
+                - روماتويد: {"نعم" if f_ra_pt or f_ra_fa or f_ra_mo or f_ra_sib else "لا"}
+                - تيبس فقاري: {"نعم" if f_as_pt or f_as_fam else "لا"}
 
-            with res_col2:
-                st.subheader("🧪 خطة الفحص المقترحة (Suggested Workup)")
-                if len(ai_results["workup"]) > 0:
-                    for item in ai_results["workup"]:
-                        st.info(f"✔️ {item}")
-                else:
-                    st.write("الأعراض الحالية لا تتطلب فحوصات مناعية متقدمة عاجلة. يرجى المتابعة السريرية.")
+                المطلوب عرض الرد حصرياً بالتنسيق التالي باللغة العربية:
+                1. 📊 الاحتمالات التشخيصية (Differential Diagnosis): اذكر أهم 3 تشخيصات محتملة مع وضع نسبة مئوية تقديرية لكل منها.
+                2. 🧬 التفسير السريري (Clinical Reasoning): اشرح بإيجاز شديد لماذا تم اختيار التشخيص الأول كأعلى احتمال بناءً على المعايير.
+                3. 🧪 خطة الفحص المقترحة (Suggested Workup): اذكر التحاليل المخبرية والأشعة المحددة لتأكيد التشخيص واستبعاد الاحتمالات الأخرى.
+                """
+                
+                try:
+                    # استدعاء العقل المدبر الفعلي
+                    response = model.generate_content(clinical_summary)
+                    
+                    st.success("✅ اكتمل التحليل السريري الذكي.")
+                    st.write("---")
+                    st.header("🎯 تقرير محرك دعم اتخاذ القرار (Real AI CDSS Output)")
+                    
+                    # عرض إجابة الذكاء الاصطناعي بشكل منسق
+                    st.markdown(response.text)
+                    
+                except Exception as e:
+                    st.error(f"حدث خطأ في الاتصال بالمحرك الذكي: {e}")
 
-    if st.button("🔄 عودة لشاشة الاستقبال (استقبال مريض جديد)"):
+    st.write("---")
+    if st.button("🔄 استقبال مريض جديد"):
         st.session_state.app_page = 'reception_screen'
         st.rerun()
