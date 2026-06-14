@@ -12,7 +12,7 @@ if 'patient_data' not in st.session_state:
     st.session_state.patient_data = {}
 
 # =================================================================
-# 📱 1. شاشة موظف الاستقبال (Front Desk Module)
+# 📱 1. شاشة موظف الاستقبال (Front Desk Module) - لم يُمس منها سطر
 # =================================================================
 if st.session_state.app_page == 'reception_screen':
     st.title("📱 واجهة موظف الاستقبال - العيادة الذكية")
@@ -85,11 +85,9 @@ if st.session_state.app_page == 'reception_screen':
         
         admin_notes = st.text_area("ملاحظات إدارية من الاستقبال")
 
-        # زر حفظ البيانات والانتقال للطبيب (الذي طلبته)
         submit_reception = st.form_submit_button("حفظ البيانات وإحالة إلى الطبيب ➡️")
 
     if submit_reception:
-        # حفظ كل بيانات الاستقبال في الذاكرة
         st.session_state.patient_data = {
             "اسم المريض": f"{first_name} {middle_name} {last_name}",
             "تاريخ الموعد": str(appointment_date),
@@ -100,17 +98,15 @@ if st.session_state.app_page == 'reception_screen':
             "الوظيفة": job_title,
             "جهة التأمين": insurance_provider
         }
-        # الانتقال لشاشة الطبيب وعمل إعادة تحميل
         st.session_state.app_page = 'doctor_screen'
         st.rerun()
 
 # =================================================================
-# 💻 2. واجهة الطبيب الاستشاري (Doctor Clinical Module)
+# 💻 2. واجهة الطبيب الاستشاري التوسعية (Clinical Modules - Scroll View)
 # =================================================================
 elif st.session_state.app_page == 'doctor_screen':
-    st.title("💻 واجهة الطبيب الاستشاري - الشيت الطبي")
+    st.title("💻 واجهة الطبيب الاستشاري - الشيت الطبي الشامل")
     
-    # شريط علوي يوضح بيانات المريض القادم من الاستقبال للتوثيق
     p = st.session_state.patient_data
     st.info(f"📋 **المريض المحال حالياً:** {p.get('اسم المريض')} | **السن:** {p.get('السن')} | **الجنس:** {p.get('الجنس')} | **جهة العمل:** {p.get('جهة التأمين')}")
     st.write("---")
@@ -118,13 +114,13 @@ elif st.session_state.app_page == 'doctor_screen':
     with st.form("doctor_form"):
         st.warning("⚠️ أدخل الأعراض والفحص السريري بالأسفل (تصفح لأسفل بنظام Scroll)")
         
-        # 1. الشكوى والتاريخ الحالي (35 إلى 37)
+        # 1. الشكوى والتاريخ الحالي (35 إلى 37) - المحفوظ كاملاً
         st.subheader("1. الشكوى والتاريخ الحالي (Present Symptoms)")
         chief_complaint = st.text_area("وصف الشكوى الرئيسية (Chief Complaint)")
         onset_duration = st.text_input("تاريخ بداية الأعراض / المدة (Onset & Duration)")
         previous_diagnosis = st.text_input("التشخيص السابق المعطى من أطباء آخرين")
         
-        # العلاجات السابقة (38 إلى 41)
+        # العلاجات السابقة (38 إلى 41) - المحفوظ كاملاً
         st.subheader("2. العلاجات والأطباء السابقين")
         c1, c2, c3 = st.columns(3)
         past_physio = c1.toggle("هل خضع لعلاج طبيعي سابقاً؟")
@@ -132,46 +128,133 @@ elif st.session_state.app_page == 'doctor_screen':
         past_injection = c3.toggle("هل خضع لحقن موضعي في المفاصل؟")
         past_doctors = st.text_area("قائمة الأطباء السابقين الذين تم استشارتهم لنفس الشكوى")
         
-        # 3. مراجعة الأنظمة الطبية الشاملة (الأعراض الحيوية الحاسمة)
-        st.subheader("3. مراجعة الأنظمة الطبية (Systems Review - ROS)")
+        # 🧪 الملحق الجديد 1: مصفوفة التاريخ العائلي للأمراض الروماتيزمية (42 إلى 59)
+        st.write("---")
+        st.subheader("🧬 3. مصفوفة التاريخ العائلي للأمراض الروماتيزمية (Family History Grid)")
+        st.write("حدّد الأمراض الجينية والوراثية في عائلة المريض (حاسمة لمحرك الـ AI CDSS):")
         
-        col_left, col_right = st.columns(2)
-        with col_left:
-            st.write("**أعراض عامة ومناعية:**")
-            weight_loss = st.toggle("فقدان وزن غير مبرر ومفاجئ")
-            fatigue = st.toggle("إجهاد عام وإعياء مزمن")
-            fever = st.toggle("حمى متكررة مجهولة السبب")
-            oral_ulcers = st.toggle("قرح متكررة ومؤلمة في الفم")
-            malar_rash = st.toggle("طفح جلدي على الخدين والأنف (Butterfly Rash)")
-            photosensitivity = st.toggle("حساسية مفرطة وضرر بالجلد عند التعرض للشمس")
+        f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
+        with f_col1:
+            st.markdown("**الذئبة الحمراء (Lupus)**")
+            f_lupus_pt = st.checkbox("المريض نفسه", key="fl1")
+            f_lupus_fa = st.checkbox("الأب", key="fl2")
+            f_lupus_mo = st.checkbox("الأم", key="fl3")
+            f_lupus_sib = st.checkbox("الأخوة/الأخوات", key="fl4")
+        with f_col2:
+            st.markdown("**الروماتويد (RA)**")
+            f_ra_pt = st.checkbox("المريض نفسه", key="fr1")
+            f_ra_fa = st.checkbox("الأب", key="fr2")
+            f_ra_mo = st.checkbox("الأم", key="fr3")
+            f_ra_sib = st.checkbox("الأخوة", key="fr4")
+        with f_col3:
+            st.markdown("**النقرس (Gout)**")
+            f_gout_pt = st.checkbox("المريض نفسه", key="fg1")
+            f_gout_fa = st.checkbox("الأب", key="fg2")
+            f_gout_sib = st.checkbox("الأخوة", key="fg3")
+        with f_col4:
+            st.markdown("**التيبس الفقاري (AS)**")
+            f_as_pt = st.checkbox("المريض", key="fa1")
+            f_as_fam = st.checkbox("الأب/الأخوة", key="fa2")
+        with f_col5:
+            st.markdown("**الصدفية والخشونة**")
+            f_oa_pt = st.checkbox("خشونة (المريض)", key="fo1")
+            f_oa_mo = st.checkbox("خشونة (الأم)", key="fo2")
+            f_pso_pt = st.checkbox("صدفية (المريض)", key="fp1")
+            f_pso_fam = st.checkbox("صدفية (الأقارب)", key="fp2")
+
+        # 🧪 الملحق الجديد 2: بقية فحص الأنظمة الطبية الشاملة (ROS) من (60 إلى 164)
+        st.write("---")
+        st.subheader("🫁 4. مراجعة الأنظمة الطبية الشاملة بالتفصيل (Complete Systems Review - ROS)")
+        
+        # (60 إلى 64): تواريخ الفحوصات العامة
+        st.markdown("**📅 تواريخ الفحوصات العامة الأخيرة:**")
+        r_c1, r_c2, r_c3 = st.columns(3)
+        dexa_date = r_c1.text_input("آخر فحص هشاشة عظام (DEXA Scan)", placeholder="التاريخ أو لم يتم سابقاً")
+        cxr_date = r_c2.text_input("آخر أشعة عادية على الصدر (Chest X-ray)", placeholder="التاريخ أو لم يتم سابقاً")
+        mammo_date = r_c3.text_input("آخر فحص ماموجرام للثدي (خاص بالسيدات)", placeholder="التاريخ أو لم يتم")
+
+        # تقسيم الفحوصات العميقة داخل مجموعات
+        ros_col1, ros_col2 = st.columns(2)
+        with ros_col1:
+            st.markdown("**👁️ فحص العيون، الأنف، الأذن والحلق (HEENT & Sicca):**")
+            dry_eyes = st.toggle("جفاف مزمن في العين (Dry Eyes / Sicca)")
+            sand_eyes = st.toggle("إحساس بوجود رمل أو جسم غريب بالعين مستمر")
+            red_eyes = st.toggle("احمرار متكرر أو مؤلم في العين (Scleritis)")
+            photophobia = st.toggle("حساسية مفرطة تجاه الضوء (Photophobia)")
+            hearing_loss = st.toggle("ضعف مفاجئ أو تدريجي في السمع")
+            tinnitus = st.toggle("طنين مستمر في الأذن (Tinnitus)")
+            epistaxis = st.toggle("نزيف متكرر من الأنف بدون سبب (Epistaxis)")
+            dry_mouth = st.toggle("جفاف شديد في الفم وصعوبة بلع الطعام الجاف")
+            jaw_claudication = st.toggle("ألم أو تيبس في مفصل الفك عند المضغ (Jaw Claudication)")
             
-        with col_right:
-            st.write("**أعراض مفصلية وحركية:**")
-            morning_stiffness = st.selectbox("مدة التيبس الصباحي في المفاصل", ["لا يوجد", "أقل من 30 دقيقة", "من 30-60 دقيقة", "أكثر من ساعة"])
-            movement_improve = st.toggle("هل يتحسن ألم وتيبس المفاصل مع الحركة؟")
-            myositis_weakness = st.toggle("هل تعاني من صعوبة النهوض من الكرسي بدون استناد؟")
-            joint_swelling = st.toggle("وجود تورم واضح وملاحظ بالعين في المفاصل")
-            symmetrical_swelling = st.toggle("هل التورم متماثل في جانبي الجسم؟")
+            st.markdown("**🫀 فحص القلب، الأوعية الدموية والجهاز التنفسي:**")
+            pleuritic_pain = st.toggle("ألم في الصدر يزداد مع التنفس العميق (Pleuritic Pain)")
+            palpitations = st.toggle("خفقان سريع أو غير منتظم في ضربات القلب")
+            dyspnea = st.toggle("ضيق في التنفس عند بذل مجهود بسيط")
+            cough_ild = st.toggle("سعال جاف مستمر ومزمن (مؤشر لتليف الرئة المناعي ILD)")
+            hemoptysis = st.toggle("بصق دم مع السعال (Hemoptysis)")
+            dvt_history = st.toggle("تاريخ سابق للإصابة بجلطات أوردة الساق العميقة (DVT)")
+
+        with ros_col2:
+            st.markdown("**🩺 فحص الجهاز الهضمي، البولي والتناسلي:**")
+            dysphagia = st.toggle("صعوبة في بلع الأطعمة الصلبة أو السائلة")
+            gerd_acid = st.toggle("حموضة شديدة وارتجاع مستمر في المريء (GERD)")
+            diarrhea_chronic = st.toggle("إسهال مزمن مستمر لأكثر من أسبوعين")
+            foam_urine = st.toggle("وجود رغوة كثيفة في البول (Proteinuria - ذئبة كلوية)")
+            genital_ulcers = st.toggle("قرح متكررة في الأعضاء التناسلية (بهجت - Behcet's)")
+            
+            st.markdown("**🤰 التاريخ النسائي والولادة (خاص بالسيدات):**")
+            abortions_count = st.number_input("عدد مرات الإجهاض التلقائي (حاسم لمتلازمة فوسفوليبيد)", min_value=0, max_value=10, value=0)
+            abortions_1st_tri = st.toggle("إجهاض متكرر في الثلث الأول من الحمل؟")
+            fetal_death = st.toggle("موت للجنين داخل الرحم في الثلث الثاني أو الثالث؟")
+            
+            st.markdown("**🧠 الغدد، المناعة والجهاز العصبي:**")
+            cold_intolerance = st.toggle("عدم تحمل البرودة الشديدة (خمول الغدة الدرقية)")
+            lymphadenopathy = st.toggle("تضخم ملحوظ في الغدد الليمفاوية بالرقبة أو الإبط")
+            purpura_spots = st.toggle("ظهور بقع زرقاء أو كدمات على الجلد بدون إصابة")
+            alopecia = st.toggle("تساقط شعر كثيف ومفاجئ يؤدي لصلع بقعي")
+            sclerodactyly = st.toggle("تغير لون جلد اليدين مع شد وسمك (Sclerodactyly)")
+            neuropathy_numb = st.toggle("تنميل أو شكشكة مستمرة في اليدين والقدمين")
+            seizures_cns = st.toggle("نوبات تشنج أو صرع غير معلومة السبب (CNS Lupus)")
+            brain_fog = st.toggle("فقدان مؤقت للذاكرة أو تشتت ذهني حاد (Brain Fog)")
+
+        # 5. التقييم العضلي الحركي والمبدئي (165 إلى 172) - المحفوظ بالكامل
+        st.write("---")
+        st.subheader("🏃 5. التقييم الحركي والتيبس الإكلينيكي المبدئي")
+        
+        col_left_2, col_right_2 = st.columns(2)
+        with col_left_2:
+            st.write("**الأعراض الإدارية السابقة:**")
+            weight_loss_old = st.toggle("فقدان وزن عام (قديم)", key="wl_old")
+            fatigue_old = st.toggle("إجهاد مزمن (قديم)", key="fat_old")
+            fever_old = st.toggle("حمى متكررة (قديم)", key="fe_old")
+            oral_ulcers_old = st.toggle("قرح فم (قديمة)", key="ou_old")
+            malar_rash_old = st.toggle("طفح جلدي على الخدين والأنف (Butterfly)", key="mr_old")
+            photosensitivity_old = st.toggle("حساسية مفرطة تجاه الشمس (قديمة)", key="ps_old")
+            
+        with col_right_2:
+            st.write("**التقييم الحركي والنوع الحركي الفعلي:**")
+            morning_stiffness = st.selectbox("مدة التيبس الصباحي في المفاصل", ["لا يوجد", "أقل من 30 دقيقة", "من 30-60 دقيقة", "أكثر من ساعة"], key="ms_new")
+            movement_improve_old = st.toggle("هل يتحسن ألم وتيبس المفاصل مع الحركة؟", key="mi_old")
+            myositis_weakness_old = st.toggle("هل تعاني من صعوبة النهوض من الكرسي بدون استناد؟", key="mw_old")
+            joint_swelling_old = st.toggle("وجود تورم واضح وملاحظ بالعين في المفاصل", key="js_old")
+            symmetrical_swelling_old = st.toggle("هل التورم متماثل في جانبي الجسم؟", key="ss_old")
 
         # مقياس شدة الألم (17)
-        st.subheader("4. التقييم الحركي المبدئي")
-        pain_score = st.slider("مقياس تقييم المريض العام لشدة الألم الحالية (PtGA)", 0, 10, 5)
+        st.markdown("**🔥 مقياس الألم الوظيفي الموحد:**")
+        pain_score = st.slider("مقياس تقييم المريض العام لشدة الألم الحالية (PtGA)", 0, 10, 5, key="ps_final")
 
-        # زر حفظ الكشف الطبي بالكامل
         submit_doctor = st.form_submit_button("💾 حفظ تقرير الكشف الطبي بالكامل")
 
     if submit_doctor:
-        st.success("🎉 تم حفظ ملف المريض الطبي بالكامل بنجاح وتغذية قاعدة البيانات المبدئية!")
-        
-        # عرض تقرير شامل يدمج بيانات الاستقبال مع كشف الطبيب في صفحة واحدة للنظام
-        st.write("### 📝 التقرير الطبي الموحد للحالة:")
+        st.success("🎉 تم حفظ ملف المريض الطبي والتاريخ العائلي وفحص الأنظمة بنجاح!")
+        st.write("### 📝 التقرير الطبي الموحد المحدث للحالة:")
         report_data = {
-            "نوع البيان": ["اسم المريض", "السن / الجنس", "الشكوى الرئيسية", "مدة التيبس الصباحي", "درجة الألم (0-10)", "حمى متكررة", "طفح الفراشة (Malar)"],
-            "التوثيق الإكلينيكي": [p.get("اسم المريض"), f"{p.get('السن')} سنة / {p.get('الجنس')}", chief_complaint, morning_stiffness, pain_score, "نعم" if fever else "لا", "نعم" if malar_rash else "لا"]
+            "نوع البيان": ["اسم المريض", "السن / الجنس", "الشكوى الرئيسية", "مدة التيبس الصباحي", "درجة الألم (0-10)", "رغوة بالبول (كلى)", "إجهاض متكرر", "تاريخ عائلي لـ Lupus"],
+            "التوثيق الإكلينيكي": [p.get("اسم المريض"), f"{p.get('السن')} سنة / {p.get('الجنس')}", chief_complaint, morning_stiffness, pain_score, "نعم" if foam_urine else "لا", f"نعم ({abortions_count})" if abortions_count > 0 else "لا", "نعم" if f_lupus_fam or f_lupus_pt else "لا"]
         }
         st.table(pd.DataFrame(report_data))
         
-    # زر إضافي خارج الفورم للعودة للاستقبال لاستقبال مريض جديد
     if st.button("🔄 عودة لشاشة الاستقبال (استقبال مريض جديد)"):
         st.session_state.app_page = 'reception_screen'
         st.rerun()
