@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import google.generativeai as genai
+import requests # استخدام الاتصال المباشر بالإنترنت لتفادي أخطاء المكتبات
 
-# =================================================================
-# ⚙️ إعداد الصفحة وإعدادات محرك الذكاء الاصطناعي (AI CDSS)
-# =================================================================
+# إعداد الصفحة لتكون مريحة للعين ومتجاوبة
 st.set_page_config(page_title="العيادة الروماتيزمية الذكية", layout="wide")
 
-# إعداد الذاكرة
+# إدارة التنقل بين شاشة الاستقبال وشاشة الطبيب في الذاكرة
 if 'app_page' not in st.session_state:
     st.session_state.app_page = 'reception_screen'
 if 'patient_data' not in st.session_state:
@@ -19,25 +17,19 @@ st.sidebar.header("🧠 إعدادات محرك AI CDSS")
 st.sidebar.info("لإجراء تحليل طبي حقيقي، يرجى إدخال مفتاح Gemini API الخاص بك بالأسفل.")
 api_key = st.sidebar.text_input("API Key", type="password")
 
-if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash') # النموذج الاحترافي الأقوى طبياً
-
 # =================================================================
-# 📱 1. شاشة موظف الاستقبال (Front Desk Module) - لم يُمس منها سطر
+# 📱 1. شاشة موظف الاستقبال (Front Desk Module) - محفوظة بالكامل
 # =================================================================
 if st.session_state.app_page == 'reception_screen':
     st.title("📱 واجهة موظف الاستقبال - العيادة الذكية")
     st.write("---")
     
     with st.form("reception_form"):
-        # (1 إلى 2): بيانات الموعد
         st.subheader("1. بيانات الموعد")
         col1, col2 = st.columns(2)
         appointment_date = col1.date_input("تاريخ الموعد", date.today())
         appointment_time = col2.time_input("وقت الموعد")
         
-        # (3 إلى 9): البيانات الشخصية
         st.subheader("2. البيانات الشخصية للمريض")
         c1, c2, c3 = st.columns(3)
         first_name = c1.text_input("الاسم الأول")
@@ -49,13 +41,11 @@ if st.session_state.app_page == 'reception_screen':
         dob = c5.date_input("تاريخ الميلاد", date(1980, 1, 1))
         id_number = st.text_input("الرقم القومي / الهوية (14 رقم)")
         
-        # (10 إلى 11): الديموغرافيا الأساسية
         st.subheader("3. الديموغرافيا الأساسية")
         c6, c7 = st.columns(2)
         age = c6.number_input("السن (يُحسب تلقائياً أو يدوي)", min_value=0, max_value=120, value=30)
         gender = c7.selectbox("الجنس", ["ذكر", "أنثى"])
         
-        # (13 إلى 22): معلومات الاتصال والحالة الاجتماعية
         st.subheader("4. معلومات الاتصال والحالة الاجتماعية")
         c8, c9 = st.columns(2)
         phone_1 = c8.text_input("رقم الهاتف الأساسي")
@@ -73,11 +63,9 @@ if st.session_state.app_page == 'reception_screen':
         youngest_child_age = c13.number_input("سن أصغر طفل", min_value=0, max_value=100, value=0)
         relation_to_spouse = c14.selectbox("صلة القرابة مع الشريك", ["لا توجد صلة", "أقارب درجة أولى", "أقارب درجة ثانية"])
         
-        # (25): بيانات الشريك
         st.subheader("5. بيانات الشريك")
         spouse_chronic_diseases = st.text_area("الأمراض المزمنة للشريك (إن وجدت)")
         
-        # (26 إلى 34): الوظيفة وجهة الإحالة
         st.subheader("6. الوظيفة وجهة الإحالة")
         c15, c16 = st.columns(2)
         job_title = c15.text_input("الوظيفة الحالية للمريض")
@@ -102,9 +90,6 @@ if st.session_state.app_page == 'reception_screen':
     if submit_reception:
         st.session_state.patient_data = {
             "اسم المريض": f"{first_name} {middle_name} {last_name}",
-            "تاريخ الموعد": str(appointment_date),
-            "رقم الهاتف": phone_1,
-            "الرقم القومي": id_number,
             "السن": age,
             "الجنس": gender,
             "الوظيفة": job_title,
@@ -114,7 +99,7 @@ if st.session_state.app_page == 'reception_screen':
         st.rerun()
 
 # =================================================================
-# 💻 2. واجهة الطبيب الاستشاري التوسعية (Clinical Modules - Scroll View)
+# 💻 2. واجهة الطبيب الاستشاري التوسعية (Clinical Modules)
 # =================================================================
 elif st.session_state.app_page == 'doctor_screen':
     st.title("💻 واجهة الطبيب الاستشاري - الشيت الطبي الشامل")
@@ -126,13 +111,11 @@ elif st.session_state.app_page == 'doctor_screen':
     with st.form("doctor_form"):
         st.warning("⚠️ أدخل الأعراض والفحص السريري بالأسفل (تصفح لأسفل بنظام Scroll)")
         
-        # 1. الشكوى والتاريخ الحالي (35 إلى 37)
         st.subheader("1. الشكوى والتاريخ الحالي (Present Symptoms)")
         chief_complaint = st.text_area("وصف الشكوى الرئيسية (Chief Complaint)")
         onset_duration = st.text_input("تاريخ بداية الأعراض / المدة (Onset & Duration)")
         previous_diagnosis = st.text_input("التشخيص السابق المعطى من أطباء آخرين")
         
-        # 2. العلاجات والأطباء السابقين
         st.subheader("2. العلاجات والأطباء السابقين")
         c1, c2, c3 = st.columns(3)
         past_physio = c1.toggle("هل خضع لعلاج طبيعي سابقاً؟")
@@ -140,7 +123,6 @@ elif st.session_state.app_page == 'doctor_screen':
         past_injection = c3.toggle("هل خضع لحقن موضعي في المفاصل؟")
         past_doctors = st.text_area("قائمة الأطباء السابقين الذين تم استشارتهم لنفس الشكوى")
         
-        # 3. مصفوفة التاريخ العائلي للأمراض الروماتيزمية
         st.write("---")
         st.subheader("🧬 3. مصفوفة التاريخ العائلي للأمراض الروماتيزمية (Family History Grid)")
         
@@ -173,7 +155,6 @@ elif st.session_state.app_page == 'doctor_screen':
             f_pso_pt = st.checkbox("صدفية (المريض)", key="fp1")
             f_pso_fam = st.checkbox("صدفية (الأقارب)", key="fp2")
 
-        # 4. مراجعة الأنظمة الطبية الشاملة
         st.write("---")
         st.subheader("🫁 4. مراجعة الأنظمة الطبية الشاملة بالتفصيل (Complete Systems Review - ROS)")
         
@@ -184,29 +165,28 @@ elif st.session_state.app_page == 'doctor_screen':
 
         ros_col1, ros_col2 = st.columns(2)
         with ros_col1:
-            st.markdown("**👁️ فحص العيون، الأنف، الأذن والحلق (HEENT & Sicca):**")
+            st.markdown("**👁️ فحص العيون، الأنف، الأذن والحلق:**")
             dry_eyes = st.toggle("جفاف مزمن في العين (Dry Eyes / Sicca)")
             red_eyes = st.toggle("احمرار متكرر أو مؤلم في العين (Scleritis)")
             dry_mouth = st.toggle("جفاف شديد في الفم وصعوبة بلع الطعام الجاف")
             
             st.markdown("**🫀 فحص القلب، الأوعية الدموية والجهاز التنفسي:**")
-            pleuritic_pain = st.toggle("ألم في الصدر يزداد مع التنفس العميق (Pleuritic Pain)")
+            pleuritic_pain = st.toggle("ألم في الصدر يزداد مع التنفس العميق")
             dyspnea = st.toggle("ضيق في التنفس عند بذل مجهود بسيط")
 
         with ros_col2:
             st.markdown("**🩺 فحص الجهاز الهضمي، البولي والتناسلي:**")
-            foam_urine = st.toggle("وجود رغوة كثيفة في البول (Proteinuria - ذئبة كلوية)")
-            genital_ulcers = st.toggle("قرح متكررة في الأعضاء التناسلية (بهجت - Behcet's)")
+            foam_urine = st.toggle("وجود رغوة كثيفة في البول (Proteinuria)")
+            genital_ulcers = st.toggle("قرح متكررة في الأعضاء التناسلية (بهجت)")
             
-            st.markdown("**🤰 التاريخ النسائي والولادة (خاص بالسيدات):**")
+            st.markdown("**🤰 التاريخ النسائي والولادة:**")
             abortions_count = st.number_input("عدد مرات الإجهاض التلقائي", min_value=0, max_value=10, value=0)
             
             st.markdown("**🧠 الغدد، المناعة والجهاز العصبي:**")
-            purpura_spots = st.toggle("ظهور بقع زرقاء أو كدمات على الجلد بدون إصابة")
-            alopecia = st.toggle("تساقط شعر كثيف ومفاجئ يؤدي لصلع بقعي")
-            sclerodactyly = st.toggle("تغير لون جلد اليدين مع شد وسمك (Sclerodactyly)")
+            purpura_spots = st.toggle("ظهور بقع زرقاء أو كدمات على الجلد")
+            alopecia = st.toggle("تساقط شعر كثيف ومفاجئ")
+            sclerodactyly = st.toggle("تغير لون جلد اليدين مع شد وسمك")
 
-        # 5. التقييم العضلي الحركي والمبدئي
         st.write("---")
         st.subheader("🏃 5. التقييم الحركي والتيبس الإكلينيكي المبدئي")
         
@@ -231,59 +211,36 @@ elif st.session_state.app_page == 'doctor_screen':
         submit_doctor = st.form_submit_button("🧠 تحليل الحالة الطبية واستخراج التشخيص الفعلي (Real AI CDSS)")
 
     # =================================================================
-    # 🤖 معالجة وربط الذكاء الاصطناعي الحقيقي عند الضغط على الزر
+    # 🤖 الاتصال المباشر عبر الويب (Web Request) لتفادي أي أخطاء سيرفر
     # =================================================================
     if submit_doctor:
         if not api_key:
             st.error("⚠️ يرجى إدخال مفتاح API في الشريط الجانبي لتشغيل المحرك الحقيقي.")
         else:
-            with st.spinner('⏳ يقوم الذكاء الاصطناعي (Gemini Medical Engine) بتحليل الحالة وربط المتلازمات...'):
+            with st.spinner('⏳ جاري إرسال البيانات السريرية مباشرة إلى خوادم جوجل الطبية...'):
                 
-                # تجميع كافة البيانات السريرية في "Prompt" طبي احترافي
-                clinical_summary = f"""
-                أنت محرك ذكاء اصطناعي طبي متخصص في الروماتيزم (Rheumatology CDSS).
-                تم إدخال حالة المريض التالية في العيادة، والمطلوب منك إصدار تقرير استشاري دقيق:
+                # صياغة التقرير الطبي المرسل
+                prompt_text = f"مريض {p.get('الجنس')}، عمره {p.get('السن')} سنة. الشكوى: {chief_complaint}. التيبس الصباحي: {morning_stiffness}. ألم يتحسن بالحركة: {movement_improve_old}. تورم متماثل: {symmetrical_swelling_old}. طفح جلدي فراشة: {malar_rash_old}. رغوة بالبول: {foam_urine}. تاريخ عائلي للذئبة: {f_lupus_pt or f_lupus_mo}. اعطني تقرير باللغة العربية مقسم إلى: 1- الاحتمالات التشخيصية بنسب مئوية. 2- التفسير السريري. 3- الفحوصات المخبرية المطلوبة لتأكيد الحالة."
                 
-                - الديموغرافيا: {p.get('الجنس')}، السن {p.get('السن')} سنة.
-                - الشكوى الرئيسية: {chief_complaint}
-                - تاريخ البداية: {onset_duration}
-                - تقييم الألم: {pain_score}/10
-                - مدة التيبس الصباحي: {morning_stiffness}
-                - تحسن الألم مع الحركة: {"نعم" if movement_improve_old else "لا"}
-                - تورم المفاصل: {"نعم" if joint_swelling_old else "لا"}، متماثل: {"نعم" if symmetrical_swelling_old else "لا"}
-                
-                الأعراض المصاحبة (Positive ROS):
-                - حمى: {"نعم" if fever_old else "لا"}
-                - طفح جلدي (Malar): {"نعم" if malar_rash_old else "لا"}
-                - قرح الفم: {"نعم" if oral_ulcers_old else "لا"}
-                - رغوة بالبول: {"نعم" if foam_urine else "لا"}
-                - جفاف عين/فم: {"نعم" if dry_eyes or dry_mouth else "لا"}
-                - عدد مرات الإجهاض: {abortions_count}
-                
-                التاريخ العائلي:
-                - ذئبة حمراء: {"نعم" if f_lupus_pt or f_lupus_fa or f_lupus_mo or f_lupus_sib else "لا"}
-                - روماتويد: {"نعم" if f_ra_pt or f_ra_fa or f_ra_mo or f_ra_sib else "لا"}
-                - تيبس فقاري: {"نعم" if f_as_pt or f_as_fam else "لا"}
-
-                المطلوب عرض الرد حصرياً بالتنسيق التالي باللغة العربية:
-                1. 📊 الاحتمالات التشخيصية (Differential Diagnosis): اذكر أهم 3 تشخيصات محتملة مع وضع نسبة مئوية تقديرية لكل منها.
-                2. 🧬 التفسير السريري (Clinical Reasoning): اشرح بإيجاز شديد لماذا تم اختيار التشخيص الأول كأعلى احتمال بناءً على المعايير.
-                3. 🧪 خطة الفحص المقترحة (Suggested Workup): اذكر التحاليل المخبرية والأشعة المحددة لتأكيد التشخيص واستبعاد الاحتمالات الأخرى.
-                """
+                # رابط خادم جوجل المباشر بدون مكتبات وسيطة
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                headers = {'Content-Type': 'application/json'}
+                payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
                 
                 try:
-                    # استدعاء العقل المدبر الفعلي
-                    response = model.generate_content(clinical_summary)
+                    response = requests.post(url, headers=headers, json=payload)
+                    res_json = response.json()
                     
-                    st.success("✅ اكتمل التحليل السريري الذكي.")
+                    # استخراج النص الطبي الراجع من السيرفر
+                    output_text = res_json['candidates'][0]['content']['parts'][0]['text']
+                    
+                    st.success("✅ تم استلام التحليل الإكلينيكي بنجاح!")
                     st.write("---")
                     st.header("🎯 تقرير محرك دعم اتخاذ القرار (Real AI CDSS Output)")
-                    
-                    # عرض إجابة الذكاء الاصطناعي بشكل منسق
-                    st.markdown(response.text)
+                    st.markdown(output_text)
                     
                 except Exception as e:
-                    st.error(f"حدث خطأ في الاتصال بالمحرك الذكي: {e}")
+                    st.error("❌ حدث خطأ في الاتصال بالسيرفر. تأكد من أن الـ API Key صالح وصحيح.")
 
     st.write("---")
     if st.button("🔄 استقبال مريض جديد"):
