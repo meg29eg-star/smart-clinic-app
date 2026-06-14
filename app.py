@@ -21,7 +21,7 @@ api_key = st.sidebar.text_input("API Key", type="password")
 
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-pro') # النموذج الاحترافي الأقوى طبياً
+    model = genai.GenerativeModel('gemini-1.5-pro-latest') # النموذج الاحترافي الأقوى طبياً
 
 # =================================================================
 # 📱 1. شاشة موظف الاستقبال (Front Desk Module) - لم يُمس منها سطر
